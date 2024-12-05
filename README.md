@@ -1,8 +1,9 @@
 # 411-Final_Project
 Project Members: John Adams, Chiron Phanbuh, Ting Shing Liu, Shiven Sharma
 ---
-This app uses the TMDB API to manage lists of films, and get information on films. You can create new lists, add and remove from them, and also delete the list.
----
+
+This app uses the TMDB API to manage lists of films, and get information on films. You can create new lists, add and remove from them, and also delete the list. You can also get a plethora of information on a given film.
+
 API ROUTES:
 ---
 
