@@ -48,7 +48,7 @@ def create_list():
             'status_code': response.get('status_code'),
             'status_message': response.get('status_message'),
             'list_id': response.get('id')
-        }), 201)
+        }), 200)
     except Exception as e:
         app.logger.error(f"Error creating list: {e}")
         return make_response(jsonify({'error': str(e)}), 500)
