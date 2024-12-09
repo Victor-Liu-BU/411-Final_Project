@@ -44,11 +44,11 @@ class MovieListModel:
             TypeError: if the movie is not a valid instance
             ValueError: if a movie with the same ID is in the list
         """
-        logger.info(f"Adding movie {movie.title} (ID: {movie.id}) to the list")
-
-        if not isinstance(movie,Movie):
+        if not isinstance(movie, Movie):
             logger.error("Movie is not of valid type")
             raise TypeError("Movie is not of valid type")
+
+        logger.info(f"Adding movie {movie.title} (ID: {movie.id}) to the list")
 
         if movie.id in [m.id for m in self.movie_list]:
             logger.error(f"Movie with ID {movie.id} already exists")
@@ -148,6 +148,11 @@ class MovieListModel:
         )
         logger.info(f"Got details for movie {movie.title} (ID: {movie.id})")
         return movie
+
+
+
+    
+   
 
 
 
