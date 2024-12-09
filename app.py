@@ -1,4 +1,7 @@
+from typing import Tuple
 from flask import Flask, jsonify, make_response, request
+from flask_sqlalchemy import SQLAlchemy
+import bcrypt
 import os
 import requests
 from dotenv import load_dotenv
@@ -7,11 +10,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key = True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    salt = db.Column(db.LargeBinary, nullable=False)
+    hashed_password = db.Column(db.LargeBinary, nullable=False)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+def hash_password(password: str) -> Tuple[bytes, bytes]:
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return salt, hashed_password
+
 
 # TMDB API configuration
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
-
 ##############################################
 # Helper Functions
 ##############################################
