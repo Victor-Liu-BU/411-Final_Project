@@ -14,6 +14,9 @@ class Movie:
         self.vote_average = vote_average
 
     def to_dict(self) -> Dict:
+        """
+        Returns a dictionary of the fields of the movie
+        """
         return {
             'id': self.id,
             'title': self.title,
@@ -25,10 +28,28 @@ class Movie:
 
 class MovieListModel:
     def __init__(self):
+        """
+        Initializes the MovieListModel with an empty list
+        """
         self.movie_list: List[Movie] = []
 
     def add_movie(self, movie: Movie) -> None:
+        """
+        Adds a movie to the list
+
+        Args: 
+            movie(Movie): Movie to add to the list
+        
+        Raises:
+            TypeError: if the movie is not a valid instance
+            ValueError: if a movie with the same ID is in the list
+        """
         logger.info(f"Adding movie {movie.title} (ID: {movie.id}) to the list")
+
+        if not isinstance(movie,Movie):
+            logger.error("Movie is not of valid type")
+            raise TypeError("Movie is not of valid type")
+
         if movie.id in [m.id for m in self.movie_list]:
             logger.error(f"Movie with ID {movie.id} already exists")
             raise ValueError(f"Movie with ID {movie.id} already exists in the list")
@@ -36,6 +57,15 @@ class MovieListModel:
         self.movie_list.append(movie)
 
     def remove_movie(self, movie_id: int) -> None:
+        """
+        Removes a movie from the list
+        
+        Args:
+            movie_id(int): integer id of the movie to be removed
+
+        Raises:
+            ValueError: if the movie id is not in the list
+        """
         logger.info(f"Removing movie with ID {movie_id} from the list")
         movie = next((m for m in self.movie_list if m.id == movie_id), None)
         if not movie:
@@ -46,6 +76,18 @@ class MovieListModel:
         logger.info(f"Movie with ID {movie_id} has been removed")
 
     def get_movie_by_id(self, movie_id: int) -> Movie:
+        """
+        Gets a movie by integer id
+
+        Args: 
+            movie_id(int): integer id of the movie requested
+
+        Returns:
+            movie(Movie): the requested movie object
+
+        Raises:
+            ValueError: movie id not found in list
+        """
         logger.info(f"Fetching movie with ID {movie_id}")
         movie = next((m for m in self.movie_list if m.id == movie_id), None)
         if not movie:
@@ -55,17 +97,41 @@ class MovieListModel:
         return movie
 
     def get_all_movies(self) -> List[Movie]:
+        """
+        Returns the list of movies
+        """
         logger.info("Fetching all movies in the list")
         return self.movie_list
 
     def clear_list(self) -> None:
+        """
+        Clears the movie list
+        """
         logger.info("Clearing all movies from the list")
         self.movie_list.clear()
 
     def get_list_length(self) -> int:
+        """
+        returns integer length of list
+        """
         return len(self.movie_list)
 
     def get_movie_details(self, movie_id: int, tmdb_request) -> Movie:
+        """
+        returns certain details about a movie: 
+        integer_id, original title, relsease date, runtime, and rating
+
+        Args:
+            movie_id(int): integer id of requested movie
+            tmdb_request(Callable): request to API
+        
+        Returns:
+            movie(Movie): movie object with details of requested movie
+
+        Raises:
+            ValueError: movie id does not exist/ cant be found in app
+        
+        """
         logger.info(f"Getting movie details for ID {movie_id} from TMDB API")
         response = tmdb_request(f"/movie/{movie_id}")
 
@@ -82,6 +148,7 @@ class MovieListModel:
         )
         logger.info(f"Got details for movie {movie.title} (ID: {movie.id})")
         return movie
+
 
 
     
