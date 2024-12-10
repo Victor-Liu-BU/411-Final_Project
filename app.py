@@ -12,6 +12,33 @@ import bcrypt
 import os
 import requests
 from dotenv import load_dotenv
+import logging 
+
+##############################################
+# health and db checks
+##############################################
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check for the service.
+    """
+    
+    return jsonify({'status': 'healthy'}), 200
+
+# Database Connection Check Endpoint
+@app.route('/db-check', methods=['GET'])
+def db_check():
+    """
+    Check database connection.
+    """
+    try:
+        # Attempt to query the database to check the connection
+        db.session.execute('SELECT 1')  
+        return jsonify({'database_status': 'healthy'}), 200
+    except Exception as e:
+        app.logger.error(f"Database connection check failed: {str(e)}")  # Log error
+        return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
 # Load environment variables
 load_dotenv()
@@ -58,6 +85,7 @@ def hash_password(password: str) -> Tuple[bytes, bytes]:
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return salt, hashed_password
+
 def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: str) -> bool:
     """
     Verifies a provided password against a stored hash.
@@ -72,6 +100,8 @@ def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: s
     """
 
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash)
+
+@app.route('/clear-user-catalog', methods=['DELETE'])
 def clear_catalog_user():
     try:
         # Create a session
@@ -87,6 +117,8 @@ def clear_catalog_user():
         # Log the error and raise it
         app.logger.error(f"Database error while clearing user catalog: {str(e)}")
         raise e
+
+@app.route('/clear-movie-catalog', methods=['DELETE'])
 def clear_catalog_Movie():
     try:
         # Create a session
@@ -132,6 +164,7 @@ class Movie(MovieBase):
         return f'<Movie {self.original_title} ({self.release_date.year if self.release_date else "Unknown"})>'
 # with app.app_context():
 #     db.create_all()
+
 def initialize_databases():
     UserBase.metadata.create_all(user_engine)
     MovieBase.metadata.create_all(movie_engine)
@@ -139,6 +172,7 @@ def initialize_databases():
 #     with app.app_context():
 #         db.create_all(bind='users')
 #         db.create_all(bind='movies')
+
 @app.route('/create-account', methods=['POST'])
 def create_account():
     """
@@ -152,7 +186,7 @@ def create_account():
 
     data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
-        logger.warning('Invalid account creation attempt: Missing credentials')
+        app.logger.warning('Invalid account creation attempt: Missing credentials')
         return jsonify({'error': 'Username and password required'}), 400
     username = data['username']
     password = data['password']
@@ -173,16 +207,16 @@ def create_account():
             session.add(new_user)
             session.commit()
         
-        logger.info(f'Account created for username: {username}')
+        app.logger.info(f'Account created for username: {username}')
         return jsonify({'message': 'Account created successfully'}), 201
     except IntegrityError:
         UserSession.rollback()
-        logger.warning(f'Account creation failed: Username {username} already exists')
+        app.logger.warning(f'Account creation failed: Username {username} already exists')
         return jsonify({'error': 'Username already exists'}), 409
     except Exception as e:
         # Catch any unexpected errors
         UserSession.rollback()
-        logger.error(f'Unexpected error in account creation: {str(e)}')
+        app.logger.error(f'Unexpected error in account creation: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
     
 @app.route('/login', methods=['POST'])
@@ -198,7 +232,7 @@ def login():
     
     data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
-        logger.warning('Invalid login attempt: Missing credentials')
+        app.logger.warning('Invalid login attempt: Missing credentials')
         return jsonify({'error': 'Username and password required'}), 400
     
     username = data['username']
@@ -220,8 +254,9 @@ def login():
                 app.logger.warning(f'Failed login attempt for username: {username}')
                 return jsonify({'error': 'Invalid credentials'}), 401
     except Exception as e:
-        logger.error(f'Unexpected error in login: {str(e)}')
+        app.logger.error(f'Unexpected error in login: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
+    
 @app.route('/update-password', methods=['POST'])
 def update_password():
     """
@@ -236,7 +271,7 @@ def update_password():
     data = request.get_json()
     required_fields = ['username', 'current_password', 'new_password']
     if not all(field in data for field in required_fields):
-        logger.warning('Invalid password update attempt: Missing credentials')
+        app.logger.warning('Invalid password update attempt: Missing credentials')
         return jsonify({'error': 'Username, current password, and new password required'}), 400
     
     username = data['username']
@@ -272,31 +307,6 @@ def update_password():
         app.logger.error(f'Unexpected error in password update: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
 
-##############################################
-# health and db checks
-##############################################
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    """
-    Health check for the service.
-    """
-    
-    return jsonify({'status': 'healthy'}), 200
-
-# Database Connection Check Endpoint
-@app.route('/db-check', methods=['GET'])
-def db_check():
-    """
-    Check database connection.
-    """
-    try:
-        # Attempt to query the database to check the connection
-        db.session.execute('SELECT 1')  
-        return jsonify({'database_status': 'healthy'}), 200
-    except Exception as e:
-        app.logger.error(f"Database connection check failed: {str(e)}")  # Log error
-        return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
 # TMDB API configuration
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
