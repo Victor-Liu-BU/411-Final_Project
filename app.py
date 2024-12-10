@@ -21,6 +21,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 class User(db.Model):
+        """
+    Represents a user in the system.
+
+    Attributes:
+        id (int): The unique identifier for the user.
+        username (str): The user's username.
+        salt (bytes): The salt used for password hashing.
+        hashed_password (bytes): The hashed password of the user.
+    """
     __bind_key__ = 'users'
     __tablename__ = 'user_table'
 
@@ -32,10 +41,32 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 def hash_password(password: str) -> Tuple[bytes, bytes]:
+    """
+    Hashes a password using bcrypt.
+
+    Args:
+        password (str): The password to hash.
+
+    Returns:
+        Tuple[bytes, bytes]: A tuple containing the salt and hashed password.
+    """
+    
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return salt, hashed_password
 def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: str) -> bool:
+    """
+    Verifies a provided password against a stored hash.
+
+    Args:
+        stored_salt (bytes): The stored salt.
+        stored_hash (bytes): The stored hashed password.
+        provided_password (str): The password to verify.
+
+    Returns:
+        bool: True if the password is correct, False otherwise.
+    """
+
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash)
 def clear_catalog_user():
     try:
@@ -69,6 +100,17 @@ def clear_catalog_Movie():
         raise e
 
 class Movie(db.Model):
+    """
+    Represents a movie in the system.
+
+    Attributes:
+        id (int): The unique identifier for the movie.
+        original_language (str): The original language of the movie.
+        original_title (str): The original title of the movie.
+        release_date (datetime): The release date of the movie.
+        runtime (int): The runtime of the movie in minutes.
+        vote_average (float): The average vote rating of the movie.
+    """
     __bind_key__ = 'movies'
     __tablename__ = 'movie_table'
     id = db.Column(db.Integer, primary_key=True)
@@ -99,6 +141,15 @@ with app.app_context():
     db.create_all()
 @app.route('/create-account', methods=['POST'])
 def create_account():
+    """
+    Creates a new user account.
+
+    Expects a JSON payload with 'username' and 'password'.
+
+    Returns:
+        JSON response with success message or error details.
+    """
+
     data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
         logger.warning('Invalid account creation attempt: Missing credentials')
@@ -134,6 +185,15 @@ def create_account():
         return jsonify({'error': 'Internal server error'}), 500
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Authenticates a user.
+
+    Expects a JSON payload with 'username' and 'password'.
+
+    Returns:
+        JSON response with success message or error details.
+    """
+    
     data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
         logger.warning('Invalid login attempt: Missing credentials')
@@ -162,6 +222,15 @@ def login():
         return jsonify({'error': 'Internal server error'}), 500
 @app.route('/update-password', methods=['POST'])
 def update_password():
+    """
+    Updates a user's password.
+
+    Expects a JSON payload with 'username', 'current_password', and 'new_password'.
+
+    Returns:
+        JSON response with success message or error details.
+    """
+
     data = request.get_json()
     required_fields = ['username', 'current_password', 'new_password']
     if not all(field in data for field in required_fields):
@@ -209,6 +278,7 @@ def health_check():
     """
     Health check for the service.
     """
+    
     return jsonify({'status': 'healthy'}), 200
 
 # Database Connection Check Endpoint
@@ -233,6 +303,19 @@ TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 ##############################################
 
 def tmdb_request(endpoint, method='GET', params=None, data=None):
+    """
+    Makes a request to the TMDB API.
+
+    Args:
+        endpoint (str): The API endpoint.
+        method (str): The HTTP method (default: 'GET').
+        params (dict, optional): Query parameters.
+        data (dict, optional): Request body for POST requests.
+
+    Returns:
+        dict: The JSON response from the API.
+    """
+    
     url = f"{TMDB_BASE_URL}{endpoint}"
     headers = {
         'Authorization': f"Bearer {TMDB_API_KEY}",
