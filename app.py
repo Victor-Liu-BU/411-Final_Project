@@ -327,27 +327,38 @@ def tmdb_request(endpoint, method='GET', params=None, data=None):
 ##############################################
 # Movie List Management
 ##############################################
-
 @app.route('/api/list/create', methods=['POST'])
 def create_list():
     try:
         data = request.get_json()
         name = data.get('name')
-        description = data.get('description')
 
         if not name:
             return make_response(jsonify({'error': 'Name is required'}), 400)
 
+        # First create list in TMDB
         response = tmdb_request('/list', method='POST', data={
             'name': name,
-            'description': description
         })
+
+        # Store list information in local database
+        with MovieSession() as session:
+            new_list = Movie(
+                id=response.get('id'),
+                original_title=name,
+                original_language='en',
+                release_date=None,
+                runtime=0,
+                vote_average=0.0
+            )
+            session.add(new_list)
+            session.commit()
 
         return make_response(jsonify({
             'status_code': response.get('status_code'),
             'status_message': response.get('status_message'),
             'list_id': response.get('id')
-        }), 200)
+        }), 201)
     except Exception as e:
         app.logger.error(f"Error creating list: {e}")
         return make_response(jsonify({'error': str(e)}), 500)
@@ -355,7 +366,15 @@ def create_list():
 @app.route('/api/list/<int:list_id>/delete', methods=['DELETE'])
 def delete_list(list_id):
     try:
+        # First delete from TMDB
         response = tmdb_request(f'/list/{list_id}', method='DELETE')
+
+        # Then delete from local database
+        with MovieSession() as session:
+            movie = session.query(Movie).filter_by(id=list_id).first()
+            if movie:
+                session.delete(movie)
+                session.commit()
 
         return make_response(jsonify({
             'status_code': response.get('status_code'),
@@ -374,9 +393,26 @@ def add_movie_to_list(list_id):
         if not movie_id:
             return make_response(jsonify({'error': 'Movie ID is required'}), 400)
 
+        # First add to TMDB list
         response = tmdb_request(f'/list/{list_id}/add_item', method='POST', data={
             'media_id': movie_id
         })
+
+        # Get movie details from TMDB
+        movie_details = tmdb_request(f'/movie/{movie_id}')
+
+        # Store in local database
+        with MovieSession() as session:
+            movie = Movie(
+                id=movie_id,
+                original_language=movie_details.get('original_language'),
+                original_title=movie_details.get('original_title'),
+                release_date=movie_details.get('release_date'),
+                runtime=movie_details.get('runtime'),
+                vote_average=movie_details.get('vote_average')
+            )
+            session.merge(movie)
+            session.commit()
 
         return make_response(jsonify({
             'status_code': response.get('status_code'),
@@ -386,43 +422,30 @@ def add_movie_to_list(list_id):
         app.logger.error(f"Error adding movie to list: {e}")
         return make_response(jsonify({'error': str(e)}), 500)
 
-@app.route('/api/list/<int:list_id>/remove_movie', methods=['POST'])
-def remove_movie_from_list(list_id):
-    try:
-        data = request.get_json()
-        movie_id = data.get('movie_id')
-
-        if not movie_id:
-            return make_response(jsonify({'error': 'Movie ID is required'}), 400)
-
-        response = tmdb_request(f'/list/{list_id}/remove_item', method='POST', data={
-            'media_id': movie_id
-        })
-
-        return make_response(jsonify({
-            'status_code': response.get('status_code'),
-            'status_message': response.get('status_message')
-        }), 200)
-    except Exception as e:
-        app.logger.error(f"Error removing movie from list: {e}")
-        return make_response(jsonify({'error': str(e)}), 500)
-
-##############################################
-# Movie Details
-##############################################
-
 @app.route('/api/movie/<int:movie_id>', methods=['GET'])
 def get_movie_details(movie_id):
     try:
-        response = tmdb_request(f'/movie/{movie_id}')
+        # First check local database
+        with MovieSession() as session:
+            movie = session.query(Movie).filter_by(id=movie_id).first()
+            
+            if not movie:
+                # If not in local database, fetch from TMDB
+                response = tmdb_request(f'/movie/{movie_id}')
+                
+                # Store in local database
+                movie = Movie(
+                    id=movie_id,
+                    original_language=response.get('original_language'),
+                    original_title=response.get('original_title'),
+                    release_date=response.get('release_date'),
+                    runtime=response.get('runtime'),
+                    vote_average=response.get('vote_average')
+                )
+                session.add(movie)
+                session.commit()
 
-        movie_details = {
-            'original_language': response.get('original_language'),
-            'original_title': response.get('original_title'),
-            'release_date': response.get('release_date'),
-            'runtime': response.get('runtime'),
-            'vote_average': response.get('vote_average')
-        }
+            movie_details = movie.to_dict()
 
         return make_response(jsonify({
             'status': 'success',
@@ -431,7 +454,3 @@ def get_movie_details(movie_id):
     except Exception as e:
         app.logger.error(f"Error getting movie details: {e}")
         return make_response(jsonify({'error': str(e)}), 500)
-
-if __name__ == '__main__':
-    initialize_databases()
-    app.run(debug=True, host='0.0.0.0', port=5000)
