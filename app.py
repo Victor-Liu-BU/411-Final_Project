@@ -11,12 +11,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///user_table.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///movie_table.db')
+app.config['SQLALCHEMY_BINDS'] = {
+    'users': os.getenv('DATABASE_URL', 'sqlite:///user_table.db'),
+    'movies': os.getenv('DATABASE_URL', 'sqlite:///movie_table.db')
+}
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 class User(db.Model):
+    __bind_key__ = 'users'
     __tablename__ = 'user_table'
 
     id = db.Column(db.Integer, primary_key = True)
@@ -34,6 +37,7 @@ def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: s
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash)
 
 class Movie(db.Model):
+    __bind_key__ = 'movies'
     __tablename__ = 'movie_table'
     id = db.Column(db.Integer, primary_key=True)
     original_language = db.Column(db.String(10), nullable=False)
