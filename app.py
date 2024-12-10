@@ -1,5 +1,4 @@
 from typing import Any, Dict, Tuple
-from venv import logger
 from flask import Flask, jsonify, make_response, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
