@@ -1,8 +1,12 @@
 from typing import Any, Dict, Tuple
+from venv import logger
 from flask import Flask, jsonify, make_response, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import Column, DateTime, Float, Integer, LargeBinary, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy
 import bcrypt
 import os
@@ -13,21 +17,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_BINDS'] = {
-    'users': os.getenv('DATABASE_URL', 'sqlite:///user_table.db'),
-    'movies': os.getenv('DATABASE_URL', 'sqlite:///movie_table.db')
-}
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+UserBase = declarative_base()
+MovieBase = declarative_base()
+user_engine = create_engine('sqlite:///user_table.db')
+movie_engine = create_engine('sqlite:///movie_table.db')
+UserSession = scoped_session(sessionmaker(bind=user_engine))
+MovieSession = scoped_session(sessionmaker(bind=movie_engine))
+# app.config['SQLALCHEMY_BINDS'] = {
+#     'users': os.getenv('USER_DATABASE_URL', 'sqlite:///user_table.db'),
+#     'movies': os.getenv('MOVIE_DATABASE_URL', 'sqlite:///movie_table.db')
+# }
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+#db = SQLAlchemy(app)
 
-class User(db.Model):
-    __bind_key__ = 'users'
+class User(UserBase):
+    #__bind_key__ = 'users'
     __tablename__ = 'user_table'
 
-    id = db.Column(db.Integer, primary_key = True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    salt = db.Column(db.LargeBinary, nullable=False)
-    hashed_password = db.Column(db.LargeBinary, nullable=False)
+    id = Column(Integer, primary_key = True)
+    username = Column(String(50), unique=True, nullable=False)
+    salt = Column(LargeBinary, nullable=False)
+    hashed_password = Column(LargeBinary, nullable=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -40,43 +50,43 @@ def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: s
 def clear_catalog_user():
     try:
         # Create a session
-        with Session(db) as session:
-            # Delete all songs
+        with UserSession() as session:
+            # Delete all users
             session.query(User).delete()
             session.commit()
         
         # Log that the catalog was cleared successfully
-        logger.info("Catalog cleared successfully.")
+        app.logger.info("User catalog cleared successfully.")
     
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
-        logger.error(f"Database error while clearing catalog: {str(e)}")
+        app.logger.error(f"Database error while clearing user catalog: {str(e)}")
         raise e
 def clear_catalog_Movie():
     try:
         # Create a session
-        with Session(db) as session:
-            # Delete all songs
+        with MovieSession() as session:
+            # Delete all movies
             session.query(Movie).delete()
             session.commit()
         
         # Log that the catalog was cleared successfully
-        logger.info("Catalog cleared successfully.")
+        app.logger.info("Movie catalog cleared successfully.")
     
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
-        logger.error(f"Database error while clearing catalog: {str(e)}")
+        app.logger.error(f"Database error while clearing movie catalog: {str(e)}")
         raise e
 
-class Movie(db.Model):
-    __bind_key__ = 'movies'
+class Movie(MovieBase):
+    #__bind_key__ = 'movies'
     __tablename__ = 'movie_table'
-    id = db.Column(db.Integer, primary_key=True)
-    original_language = db.Column(db.String(10), nullable=False)
-    original_title = db.Column(db.String(255), nullable=False)
-    release_date = db.Column(db.DateTime, nullable=False)
-    runtime = db.Column(db.Integer, nullable=False)
-    vote_average = db.Column(db.Float, nullable=True)
+    id = Column(Integer, primary_key=True)
+    original_language = Column(String(10), nullable=False)
+    original_title = Column(String(255), nullable=False)
+    release_date = Column(DateTime, nullable=False)
+    runtime = Column(Integer, nullable=False)
+    vote_average = Column(Float, nullable=True)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -95,8 +105,15 @@ class Movie(db.Model):
         }
     def __repr__(self):
         return f'<Movie {self.original_title} ({self.release_date.year if self.release_date else "Unknown"})>'
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#     db.create_all()
+def initialize_databases():
+    UserBase.metadata.create_all(user_engine)
+    MovieBase.metadata.create_all(movie_engine)
+# def create_tables():
+#     with app.app_context():
+#         db.create_all(bind='users')
+#         db.create_all(bind='movies')
 @app.route('/create-account', methods=['POST'])
 def create_account():
     data = request.get_json()
@@ -118,18 +135,19 @@ def create_account():
         )
         
         # Add to database
-        db.session.add(new_user)
-        db.session.commit()
+        with UserSession() as session:
+            session.add(new_user)
+            session.commit()
         
         logger.info(f'Account created for username: {username}')
         return jsonify({'message': 'Account created successfully'}), 201
     except IntegrityError:
-        db.session.rollback()
+        UserSession.rollback()
         logger.warning(f'Account creation failed: Username {username} already exists')
         return jsonify({'error': 'Username already exists'}), 409
     except Exception as e:
         # Catch any unexpected errors
-        db.session.rollback()
+        UserSession.rollback()
         logger.error(f'Unexpected error in account creation: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
 @app.route('/login', methods=['POST'])
@@ -142,21 +160,21 @@ def login():
     username = data['username']
     password = data['password']
     try:
-        # Find user by username
-        user = User.query.filter_by(username=username).first()
-        
-        if user is None:
-            logger.warning(f'Login attempt for non-existent user: {username}')
-            return jsonify({'error': 'Invalid credentials'}), 401
-        
-        # Verify password
-        if verify_password(user.salt, user.hashed_password, password):
-            logger.info(f'Successful login for username: {username}')
-            return jsonify({'message': 'Login successful'}), 200
-        else:
-            logger.warning(f'Failed login attempt for username: {username}')
-            return jsonify({'error': 'Invalid credentials'}), 401
-    
+        with UserSession() as session:
+            # Find user by username
+            user = session.query(User).filter_by(username=username).first()
+
+            if not user:
+                app.logger.warning(f'Login attempt for non-existent user: {username}')
+                return jsonify({'error': 'Invalid credentials'}), 401
+
+            # Verify password
+            if verify_password(user.salt, user.hashed_password, password):
+                app.logger.info(f'Successful login for username: {username}')
+                return jsonify({'message': 'Login successful'}), 200
+            else:
+                app.logger.warning(f'Failed login attempt for username: {username}')
+                return jsonify({'error': 'Invalid credentials'}), 401
     except Exception as e:
         logger.error(f'Unexpected error in login: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
@@ -172,32 +190,33 @@ def update_password():
     current_password = data['current_password']
     new_password = data['new_password']
     try:
-        # Find user by username
-        user = User.query.filter_by(username=username).first()
-        
-        if user is None:
-            logger.warning(f'Password update attempt for non-existent user: {username}')
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Verify current password
-        if not verify_password(user.salt, user.hashed_password, current_password):
-            logger.warning(f'Failed password update attempt for username: {username}')
-            return jsonify({'error': 'Current password is incorrect'}), 401
-        
-        # Generate new salt and hash for the new password
-        new_salt, new_hashed_password = hash_password(new_password)
-        
-        # Update user's password
-        user.salt = new_salt
-        user.hashed_password = new_hashed_password
-        db.session.commit()
-        
-        logger.info(f'Password updated successfully for username: {username}')
-        return jsonify({'message': 'Password updated successfully'}), 200
+        with UserSession() as session:
+            # Find user by username
+            user = session.query(User).filter_by(username=username).first()
+
+            if not user:
+                app.logger.warning(f'Password update attempt for non-existent user: {username}')
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify current password
+            if not verify_password(user.salt, user.hashed_password, current_password):
+                app.logger.warning(f'Failed password update attempt for username: {username}')
+                return jsonify({'error': 'Current password is incorrect'}), 401
+
+            # Generate new salt and hash for the new password
+            new_salt, new_hashed_password = hash_password(new_password)
+
+            # Update user's password
+            user.salt = new_salt
+            user.hashed_password = new_hashed_password
+            session.commit()
+
+            app.logger.info(f'Password updated successfully for username: {username}')
+            return jsonify({'message': 'Password updated successfully'}), 200
     
     except Exception as e:
-        db.session.rollback()
-        logger.error(f'Unexpected error in password update: {str(e)}')
+        UserSession.rollback()
+        app.logger.error(f'Unexpected error in password update: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
 
 ##############################################
@@ -350,4 +369,5 @@ def get_movie_details(movie_id):
         return make_response(jsonify({'error': str(e)}), 500)
 
 if __name__ == '__main__':
+    initialize_databases()
     app.run(debug=True, host='0.0.0.0', port=5000)
