@@ -14,31 +14,6 @@ import requests
 from dotenv import load_dotenv
 import logging 
 
-##############################################
-# health and db checks
-##############################################
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    """
-    Health check for the service.
-    """
-    
-    return jsonify({'status': 'healthy'}), 200
-
-# Database Connection Check Endpoint
-@app.route('/db-check', methods=['GET'])
-def db_check():
-    """
-    Check database connection.
-    """
-    try:
-        # Attempt to query the database to check the connection
-        db.session.execute('SELECT 1')  
-        return jsonify({'database_status': 'healthy'}), 200
-    except Exception as e:
-        app.logger.error(f"Database connection check failed: {str(e)}")  # Log error
-        return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
 # Load environment variables
 load_dotenv()
@@ -172,6 +147,33 @@ def initialize_databases():
 #     with app.app_context():
 #         db.create_all(bind='users')
 #         db.create_all(bind='movies')
+
+##############################################
+# health and db checks
+##############################################
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check for the service.
+    """
+    
+    return jsonify({'status': 'healthy'}), 200
+
+# Database Connection Check Endpoint
+@app.route('/db-check', methods=['GET'])
+def db_check():
+    """
+    Check database connection.
+    """
+    try:
+        # Attempt to query the database to check the connection
+        db.session.execute('SELECT 1')  
+        return jsonify({'database_status': 'healthy'}), 200
+    except Exception as e:
+        app.logger.error(f"Database connection check failed: {str(e)}")  # Log error
+        return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
+
 
 @app.route('/create-account', methods=['POST'])
 def create_account():
