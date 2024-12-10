@@ -165,7 +165,30 @@ def update_password():
         logger.error(f'Unexpected error in password update: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
 
+##############################################
+# health and db checks
+##############################################
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check for the service.
+    """
+    return jsonify({'status': 'healthy'}), 200
+
+# Database Connection Check Endpoint
+@app.route('/db-check', methods=['GET'])
+def db_check():
+    """
+    Check database connection.
+    """
+    try:
+        # Attempt to query the database to check the connection
+        db.session.execute('SELECT 1')  
+        return jsonify({'database_status': 'healthy'}), 200
+    except Exception as e:
+        app.logger.error(f"Database connection check failed: {str(e)}")  # Log error
+        return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
 # TMDB API configuration
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
