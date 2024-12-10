@@ -123,11 +123,10 @@ clear_movie_catalog() {
 # Function to create a movie list
 create_movie_list() {
   name=$1
-  description=$2
 
   echo "Creating movie list: $name..."
   response=$(curl -s -X POST "$BASE_URL/api/list/create" -H "Content-Type: application/json" \
-    -d "{\"name\":\"$name\", \"description\":\"$description\"}")
+    -d "{\"name\":\"$name\"}")
 
   if echo "$response" | grep -q '"status_code": 1'; then
     echo "Movie list created successfully: $name."
@@ -232,7 +231,7 @@ login "testuser" "testpassword"
 update_password "testuser" "testpassword" "newpassword"
 
 # Movie list tests
-create_movie_list "Top 100" "My top 100 movies unranked"
+create_movie_list "Top 100"
 add_movie_to_list 1 17473 
 remove_movie_from_list 1 17473
 delete_movie_list 1
