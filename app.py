@@ -2,6 +2,8 @@ from typing import Any, Dict, Tuple
 from flask import Flask, jsonify, make_response, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+import sqlalchemy
 import bcrypt
 import os
 import requests
@@ -35,6 +37,36 @@ def hash_password(password: str) -> Tuple[bytes, bytes]:
     return salt, hashed_password
 def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: str) -> bool:
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash)
+def clear_catalog_user():
+    try:
+        # Create a session
+        with Session(db) as session:
+            # Delete all songs
+            session.query(User).delete()
+            session.commit()
+        
+        # Log that the catalog was cleared successfully
+        logger.info("Catalog cleared successfully.")
+    
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        # Log the error and raise it
+        logger.error(f"Database error while clearing catalog: {str(e)}")
+        raise e
+def clear_catalog_Movie():
+    try:
+        # Create a session
+        with Session(db) as session:
+            # Delete all songs
+            session.query(Movie).delete()
+            session.commit()
+        
+        # Log that the catalog was cleared successfully
+        logger.info("Catalog cleared successfully.")
+    
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        # Log the error and raise it
+        logger.error(f"Database error while clearing catalog: {str(e)}")
+        raise e
 
 class Movie(db.Model):
     __bind_key__ = 'movies'
