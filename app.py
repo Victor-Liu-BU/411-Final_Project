@@ -1,4 +1,5 @@
 from typing import Any, Dict, Tuple
+from venv import logger
 from flask import Flask, jsonify, make_response, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
@@ -7,7 +8,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-# Load environment variables  
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
@@ -170,6 +171,7 @@ def update_password():
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    print("health called")
     """
     Health check for the service.
     """
