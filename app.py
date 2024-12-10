@@ -17,12 +17,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-UserBase = declarative_base()
-MovieBase = declarative_base()
+UserBase =sqlalchemy.orm.declarative_base()
+MovieBase =sqlalchemy.orm.declarative_base()
 user_engine = create_engine('sqlite:///user_table.db')
 movie_engine = create_engine('sqlite:///movie_table.db')
 UserSession = scoped_session(sessionmaker(bind=user_engine))
 MovieSession = scoped_session(sessionmaker(bind=movie_engine))
+
 class User(UserBase):
     """
     Represents a user in the system.
@@ -33,6 +34,7 @@ class User(UserBase):
         salt (bytes): The salt used for password hashing.
         hashed_password (bytes): The hashed password of the user.
     """
+    __tablename__ = 'users'
     id = Column(Integer, primary_key = True)
     username = Column(String(50), unique=True, nullable=False)
     salt = Column(LargeBinary, nullable=False)
@@ -52,7 +54,7 @@ def hash_password(password: str) -> Tuple[bytes, bytes]:
     Returns:
         Tuple[bytes, bytes]: A tuple containing the salt and hashed password.
     """
-    
+    __tablename__ = 'movies'
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return salt, hashed_password
@@ -182,6 +184,7 @@ def create_account():
         UserSession.rollback()
         logger.error(f'Unexpected error in account creation: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
+    
 @app.route('/login', methods=['POST'])
 def login():
     """
