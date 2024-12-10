@@ -10,8 +10,10 @@ import os
 import requests
 from dotenv import load_dotenv
 
+
 # Load environment variables
 load_dotenv()
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_BINDS'] = {
@@ -59,14 +61,14 @@ def clear_catalog_user():
         
         # Log that the catalog was cleared successfully
         logger.info("Catalog cleared successfully.")
-    
+        return jsonify({'message': 'User catalog cleared successfully'}), 200
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
         logger.error(f"Database error while clearing catalog: {str(e)}")
-        raise e
+        return jsonify({'error': str(e)}), 500
     
 @app.route('/clear-movie-catalog', methods=['DELETE'])    
-def clear_catalog_Movie():
+def clear_catalog_movie():
     try:
         # Create a session
         with Session(db) as session:
@@ -76,11 +78,11 @@ def clear_catalog_Movie():
         
         # Log that the catalog was cleared successfully
         logger.info("Catalog cleared successfully.")
-    
+        return jsonify({'message': 'Movie catalog cleared successfully'}), 200
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
         logger.error(f"Database error while clearing catalog: {str(e)}")
-        raise e
+        return jsonify({'error': str(e)}), 500
 
 class Movie(db.Model):
     __bind_key__ = 'movies'
@@ -371,4 +373,4 @@ def get_movie_details(movie_id):
         return make_response(jsonify({'error': str(e)}), 500)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
