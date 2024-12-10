@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the base URL for the Flask API
-BASE_URL="http://localhost:5001/api"
+BASE_URL="http://localhost:5001"
 
 # Flag to control whether to echo JSON output
 ECHO_JSON=false
@@ -17,6 +17,18 @@ done
 
 ###############################################
 #
+# Helper Function: Print Response
+#
+###############################################
+print_response() {
+  if [ "$ECHO_JSON" = true ]; then
+    echo "Response JSON:"
+    echo "$1" | jq .
+  fi
+}
+
+###############################################
+#
 # Health checks
 #
 ###############################################
@@ -24,8 +36,10 @@ done
 # Function to check the health of the service
 check_health() {
   echo "Checking health status..."
-  curl -s -X GET "$BASE_URL/health" | grep -q '"status": "healthy"'
-  if [ $? -eq 0 ]; then
+  response=$(curl -s -X GET "$BASE_URL/health")
+  print_response "$response"
+
+  if echo "$response" | grep -q '"status": "healthy"'; then
     echo "Service is healthy."
   else
     echo "Health check failed."
@@ -36,8 +50,10 @@ check_health() {
 # Function to check the database connection
 check_db() {
   echo "Checking database connection..."
-  curl -s -X GET "$BASE_URL/db-check" | grep -q '"database_status": "healthy"'
-  if [ $? -eq 0 ]; then
+  response=$(curl -s -X GET "$BASE_URL/db-check")
+  print_response "$response"
+
+  if echo "$response" | grep -q '"database_status": "healthy"'; then
     echo "Database connection is healthy."
   else
     echo "Database check failed."
@@ -59,6 +75,7 @@ create_account() {
   echo "Creating account for user: $username..."
   response=$(curl -s -X POST "$BASE_URL/create-account" -H "Content-Type: application/json" \
     -d "{\"username\":\"$username\", \"password\":\"$password\"}")
+  print_response "$response"
 
   if echo "$response" | grep -q '"message": "Account created successfully"'; then
     echo "Account created successfully for user: $username."
@@ -76,6 +93,7 @@ login() {
   echo "Logging in user: $username..."
   response=$(curl -s -X POST "$BASE_URL/login" -H "Content-Type: application/json" \
     -d "{\"username\":\"$username\", \"password\":\"$password\"}")
+  print_response "$response"
 
   if echo "$response" | grep -q '"message": "Login successful"'; then
     echo "Login successful for user: $username."
@@ -94,6 +112,7 @@ update_password() {
   echo "Updating password for user: $username..."
   response=$(curl -s -X POST "$BASE_URL/update-password" -H "Content-Type: application/json" \
     -d "{\"username\":\"$username\", \"current_password\":\"$current_password\", \"new_password\":\"$new_password\"}")
+  print_response "$response"
 
   if echo "$response" | grep -q '"message": "Password updated successfully"'; then
     echo "Password updated successfully for user: $username."
@@ -103,10 +122,18 @@ update_password() {
   fi
 }
 
-#clears the user catalog
+# Function to clear the user catalog
 clear_user_catalog() {
-  echo "Clearing the users..."
-  curl -s -X DELETE "$BASE_URL/clear-user-catalog" | grep -q 'Catalog cleared successfully.'
+  echo "Clearing the user catalog..."
+  response=$(curl -s -X DELETE "$BASE_URL/clear-user-catalog")
+  print_response "$response"
+
+  if echo "$response" | grep -q '"message": "User catalog cleared successfully"'; then
+    echo "User catalog cleared successfully."
+  else
+    echo "Failed to clear the user catalog."
+    exit 1
+  fi
 }
 
 ###############################################
@@ -115,11 +142,20 @@ clear_user_catalog() {
 #
 ###############################################
 
-#clears the movie catalog
+# Function to clear the movie catalog
 clear_movie_catalog() {
-  echo "Clearing the movies..."
-  curl -s -X DELETE "$BASE_URL/clear-movie-catalog" | grep -q 'Catalog cleared successfully.'
+  echo "Clearing the movie catalog..."
+  response=$(curl -s -X DELETE "$BASE_URL/clear-movie-catalog")
+  print_response "$response"
+
+  if echo "$response" | grep -q '"message": "Movie catalog cleared successfully"'; then
+    echo "Movie catalog cleared successfully."
+  else
+    echo "Failed to clear the movie catalog."
+    exit 1
+  fi
 }
+
 # Function to create a movie list
 create_movie_list() {
   name=$1
@@ -128,6 +164,7 @@ create_movie_list() {
   echo "Creating movie list: $name..."
   response=$(curl -s -X POST "$BASE_URL/api/list/create" -H "Content-Type: application/json" \
     -d "{\"name\":\"$name\", \"description\":\"$description\"}")
+  print_response "$response"
 
   if echo "$response" | grep -q '"status_code": 1'; then
     echo "Movie list created successfully: $name."
@@ -143,6 +180,7 @@ delete_movie_list() {
 
   echo "Deleting movie list ID: $list_id..."
   response=$(curl -s -X DELETE "$BASE_URL/api/list/$list_id/delete")
+  print_response "$response"
 
   if echo "$response" | grep -q '"status_code": 1'; then
     echo "Movie list ID $list_id deleted successfully."
@@ -160,8 +198,9 @@ add_movie_to_list() {
   echo "Adding movie ID $movie_id to list ID $list_id..."
   response=$(curl -s -X POST "$BASE_URL/api/list/$list_id/add_movie" -H "Content-Type: application/json" \
     -d "{\"movie_id\": $movie_id}")
+  print_response "$response"
 
-  if echo "$response" | grep -q '"status_code": 1'; then
+  if echo "$response" | grep -q '"status_code": 12'; then
     echo "Movie ID $movie_id added to list ID $list_id successfully."
   else
     echo "Failed to add movie ID $movie_id to list ID $list_id."
@@ -177,15 +216,15 @@ remove_movie_from_list() {
   echo "Removing movie ID $movie_id from list ID $list_id..."
   response=$(curl -s -X POST "$BASE_URL/api/list/$list_id/remove_movie" -H "Content-Type: application/json" \
     -d "{\"movie_id\": $movie_id}")
+  print_response "$response"
 
-  if echo "$response" | grep -q '"status_code": 1'; then
+  if echo "$response" | grep -q '"status_code": 13'; then
     echo "Movie ID $movie_id removed from list ID $list_id successfully."
   else
     echo "Failed to remove movie ID $movie_id from list ID $list_id."
     exit 1
   fi
 }
-
 
 ###############################################
 #
@@ -199,13 +238,10 @@ get_movie_details() {
 
   echo "Retrieving details for movie ID: $movie_id..."
   response=$(curl -s -X GET "$BASE_URL/api/movie/$movie_id")
+  print_response "$response"
 
   if echo "$response" | grep -q '"status": "success"'; then
     echo "Movie details retrieved successfully for ID: $movie_id."
-    if [ "$ECHO_JSON" = true ]; then
-      echo "Movie JSON:"
-      echo "$response" | jq .
-    fi
   else
     echo "Failed to retrieve movie details for ID: $movie_id."
     exit 1
@@ -222,7 +258,7 @@ get_movie_details() {
 check_health
 check_db
 
-#clear catalogs
+# Clear catalogs
 clear_movie_catalog
 clear_user_catalog
 
@@ -233,7 +269,7 @@ update_password "testuser" "testpassword" "newpassword"
 
 # Movie list tests
 create_movie_list "Top 100" "My top 100 movies unranked"
-add_movie_to_list 1 17473 
+add_movie_to_list 1 17473
 remove_movie_from_list 1 17473
 delete_movie_list 1
 
