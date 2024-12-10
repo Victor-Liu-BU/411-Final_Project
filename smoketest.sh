@@ -159,7 +159,6 @@ clear_movie_catalog() {
 # Function to create a movie list
 create_movie_list() {
   name=$1
-  description=$2
 
   echo "Creating movie list: $name..."
   response=$(curl -s -X POST "$BASE_URL/api/list/create" -H "Content-Type: application/json" \
