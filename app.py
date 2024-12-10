@@ -3,6 +3,8 @@ from venv import logger
 from flask import Flask, jsonify, make_response, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+import sqlalchemy
 import bcrypt
 import os
 import requests
@@ -20,6 +22,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 class User(db.Model):
+    """
+    """
     __bind_key__ = 'users'
     __tablename__ = 'user_table'
 
@@ -30,12 +34,53 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
 def hash_password(password: str) -> Tuple[bytes, bytes]:
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return salt, hashed_password
+
 def verify_password(stored_salt: bytes, stored_hash: bytes, provided_password: str) -> bool:
     return bcrypt.checkpw(provided_password.encode('utf-8'), stored_hash)
+
+@app.route('/clear-user-catalog', methods=['DELETE'])   
+def clear_catalog_user():
+    """
+    clears the user database
+
+    Raises:
+    """
+    try:
+        # Create a session
+        with Session(db) as session:
+            # Delete all songs
+            session.query(User).delete()
+            session.commit()
+        
+        # Log that the catalog was cleared successfully
+        logger.info("Catalog cleared successfully.")
+    
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        # Log the error and raise it
+        logger.error(f"Database error while clearing catalog: {str(e)}")
+        raise e
+    
+@app.route('/clear-movie-catalog', methods=['DELETE'])    
+def clear_catalog_Movie():
+    try:
+        # Create a session
+        with Session(db) as session:
+            # Delete all songs
+            session.query(Movie).delete()
+            session.commit()
+        
+        # Log that the catalog was cleared successfully
+        logger.info("Catalog cleared successfully.")
+    
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        # Log the error and raise it
+        logger.error(f"Database error while clearing catalog: {str(e)}")
+        raise e
 
 class Movie(db.Model):
     __bind_key__ = 'movies'
@@ -64,8 +109,11 @@ class Movie(db.Model):
         }
     def __repr__(self):
         return f'<Movie {self.original_title} ({self.release_date.year if self.release_date else "Unknown"})>'
+
 with app.app_context():
     db.create_all()
+
+
 @app.route('/create-account', methods=['POST'])
 def create_account():
     data = request.get_json()
@@ -101,6 +149,8 @@ def create_account():
         db.session.rollback()
         logger.error(f'Unexpected error in account creation: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
+    
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -129,6 +179,7 @@ def login():
     except Exception as e:
         logger.error(f'Unexpected error in login: {str(e)}')
         return jsonify({'error': 'Internal server error'}), 500
+    
 @app.route('/update-password', methods=['POST'])
 def update_password():
     data = request.get_json()
@@ -197,6 +248,7 @@ def db_check():
 # TMDB API configuration
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+
 ##############################################
 # Helper Functions
 ##############################################

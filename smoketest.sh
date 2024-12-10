@@ -104,6 +104,11 @@ update_password() {
   fi
 }
 
+#clears the user catalog
+clear_user_catalog() {
+  echo "Clearing the users..."
+  curl -s -X DELETE "$BASE_URL/clear-user-catalog" | grep -q 'Catalog cleared successfully.'
+}
 
 ###############################################
 #
@@ -111,6 +116,11 @@ update_password() {
 #
 ###############################################
 
+#clears the movie catalog
+clear_movie_catalog() {
+  echo "Clearing the movies..."
+  curl -s -X DELETE "$BASE_URL/clear-movie-catalog" | grep -q 'Catalog cleared successfully.'
+}
 # Function to create a movie list
 create_movie_list() {
   name=$1
@@ -212,6 +222,10 @@ get_movie_details() {
 # Health checks
 check_health
 check_db
+
+#clear catalogs
+clear_movie_catalog
+clear_user_catalog
 
 # User tests
 create_account "testuser" "testpassword"
