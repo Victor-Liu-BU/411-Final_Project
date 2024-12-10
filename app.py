@@ -24,8 +24,7 @@ movie_engine = create_engine('sqlite:///movie_table.db')
 UserSession = scoped_session(sessionmaker(bind=user_engine))
 MovieSession = scoped_session(sessionmaker(bind=movie_engine))
 class User(UserBase):
-    #__bind_key__ = 'users'
-        """
+    """
     Represents a user in the system.
 
     Attributes:
@@ -34,10 +33,6 @@ class User(UserBase):
         salt (bytes): The salt used for password hashing.
         hashed_password (bytes): The hashed password of the user.
     """
-    #__bind_key__ = 'users'
-
-    __tablename__ = 'user_table'
-
     id = Column(Integer, primary_key = True)
     username = Column(String(50), unique=True, nullable=False)
     salt = Column(LargeBinary, nullable=False)
@@ -45,6 +40,8 @@ class User(UserBase):
 
     def __repr__(self):
         return f'<User {self.username}>'
+    #__bind_key__ = 'users'
+    
 def hash_password(password: str) -> Tuple[bytes, bytes]:
     """
     Hashes a password using bcrypt.
