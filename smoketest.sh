@@ -50,6 +50,11 @@ check_db() {
 # User Account Management
 #
 ###############################################
+#clears the user catalog
+clear_user_catalog() {
+  echo "Clearing the users..."
+  curl -s -X DELETE "$BASE_URL/clear-user-catalog" | grep -q 'Catalog cleared successfully.'
+}
 
 # Function to create a user account
 
@@ -105,11 +110,6 @@ update_password() {
   fi
 }
 
-#clears the user catalog
-clear_user_catalog() {
-  echo "Clearing the users..."
-  curl -s -X DELETE "$BASE_URL/clear-user-catalog" | grep -q 'Catalog cleared successfully.'
-}
 
 ###############################################
 #
