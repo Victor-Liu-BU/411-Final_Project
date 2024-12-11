@@ -87,7 +87,7 @@ def clear_catalog_user():
         
         # Log that the catalog was cleared successfully
         app.logger.info("User catalog cleared successfully.")
-    
+        return ("User catalog cleared successfully.")
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
         app.logger.error(f"Database error while clearing user catalog: {str(e)}")
@@ -104,7 +104,7 @@ def clear_catalog_Movie():
         
         # Log that the catalog was cleared successfully
         app.logger.info("Movie catalog cleared successfully.")
-    
+        return ("Movie catalog cleared successfully.")
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Log the error and raise it
         app.logger.error(f"Database error while clearing movie catalog: {str(e)}")
