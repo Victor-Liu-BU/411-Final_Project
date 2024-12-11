@@ -469,3 +469,7 @@ def get_movie_details(movie_id):
     except Exception as e:
         app.logger.error(f"Error getting movie details: {e}")
         return make_response(jsonify({'error': str(e)}), 500)
+    
+if __name__ =='__main__':
+    initialize_databases()
+    app.run(debug=True, host='0.0.0.0', port='5000')

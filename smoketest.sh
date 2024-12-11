@@ -52,21 +52,6 @@ check_db() {
 ###############################################
 
 # Function to create a user account
-create_account() {
-  username=$1
-  password=$2
-
-  echo "Creating account for user: $username..."
-  response=$(curl -s -X POST "$BASE_URL/create-account" -H "Content-Type: application/json" \
-    -d "{\"username\":\"$username\", \"password\":\"$password\"}")
-    echo "$response"
-  if echo "$response" | grep -q '"message": "Account created successfully"'; then
-    echo "Account created successfully for user: $username."
-  else
-    echo "Failed to create account for user: $username."
-    exit 1
-  fi
-}
 
 create_account() {
  username=$1
@@ -237,7 +222,6 @@ get_movie_details() {
 
 # Health checks
 check_health
-check_db
 
 #clear catalogs
 clear_movie_catalog
