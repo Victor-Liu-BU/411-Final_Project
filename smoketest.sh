@@ -66,7 +66,6 @@ create_account() {
  echo "Creating account for user: $username..."
  response=$(curl -s -X POST "$BASE_URL/create-account" -H "Content-Type: application/json" \
    -d "{\"username\":\"$username\", \"password\":\"$password\"}")
-
  if echo "$response" | grep -q '"message": "Account created successfully"'; then
    echo "Account created successfully for user: $username."
  else
@@ -130,7 +129,6 @@ create_movie_list() {
   echo "Creating movie list: $name..."
   response=$(curl -s -X POST "$BASE_URL/api/list/create" -H "Content-Type: application/json" \
     -d "{\"name\":\"$name\"}")
-  echo "$response"
   if echo "$response" | grep -q '"status_code": 1'; then
     echo "Movie list created successfully: $name."
   else
@@ -223,20 +221,24 @@ get_movie_details() {
 # Health checks
 check_health
 
+
 #clear catalogs
 clear_movie_catalog
 clear_user_catalog
 
+
 # User tests
+create_account "testuser" "testpassword"
+login "testuser" "testpassword"
+update_password "testuser" "testpassword" "newpassword"
 
 
 # Movie list tests
 create_movie_list "Top 100"
-add_movie_to_list 1 17473 
+add_movie_to_list 1 17473
 remove_movie_from_list 1 17473
 delete_movie_list 1
 
+
 # Movie details tests
 get_movie_details 17473
-
-echo "All tests passed successfully!"

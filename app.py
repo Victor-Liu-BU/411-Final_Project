@@ -175,7 +175,7 @@ def db_check():
         return jsonify({'database_status': 'unhealthy', 'error': str(e)}), 500
 
 
-@app.route('/create-account', methods=['POST'])
+@app.route('/api/create-account', methods=['POST'])
 def create_account():
     """
     Creates a new user account.
@@ -472,4 +472,4 @@ def get_movie_details(movie_id):
     
 if __name__ =='__main__':
     initialize_databases()
-    app.run(debug=True, host='0.0.0.0', port='5000')
+    app.run(debug=True, host='0.0.0.0', port='5001')
